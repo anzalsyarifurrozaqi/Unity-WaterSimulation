@@ -1,0 +1,75 @@
+#pragma kernel CSMain
+#pragma kernel CSTexture
+
+struct VertexData
+{
+    float3 pos;
+    float3 nor;
+    float2 uv;
+};
+
+RWStructuredBuffer<VertexData> vertexBuffer;
+
+float _Time;
+float A;
+float g;
+//uint _VertexCount;
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    // float time_step = 0.5;
+
+    // VertexData LeftVertex       = vertexBuffer[id.x - 1];
+    // VertexData RightVertex      = vertexBuffer[id.x + 1];
+    // VertexData TopVertex        = vertexBuffer[id.x - 34];
+    // VertexData BottomVertex     = vertexBuffer[id.x + 34];
+
+    // VertexData Center           = vertexBuffer[id.x];
+
+    // float delta_x_center_left     = Center.pos.x - LeftVertex.pos.x;
+    // float delta_x_center_right    = RightVertex.pos.x - Center.pos.x;
+    // float delta_x_center_top      = TopVertex.pos.z - Center.pos.z;
+    // float delta_x_center_bottom   = Center.pos.z - BottomVertex.pos.z;
+
+    // float delta_y_center_left     = Center.pos.y - LeftVertex.pos.y;
+    // float delta_y_center_right    = RightVertex.pos.y - Center.pos.y;
+    // float delta_y_center_top      = TopVertex.pos.y - Center.pos.y;
+    // float delta_y_center_bottom   = Center.pos.y - BottomVertex.pos.y;
+
+    // float q_left                  = A * (g / delta_x_center_left) * delta_y_center_left * time_step;
+    // float q_right                 = A * (g / delta_x_center_right) * delta_y_center_right * time_step;
+    // float q_top                   = A * (g / delta_x_center_top) * delta_y_center_top * time_step;
+    // float q_bottom                = A * (g / delta_x_center_bottom) * delta_y_center_bottom * time_step;
+
+    // float sigma_q = q_left + q_right + q_top + q_bottom;
+
+    // // float d     = -time_step * (sigma_q / pow(delta_x_center_left, 2));
+    // // d           += -time_step * (sigma_q / pow(delta_x_center_right, 2));
+    // // d           += -time_step * (sigma_q / pow(delta_x_center_top, 2));
+    // // d           += -time_step * (sigma_q / pow(delta_x_center_bottom, 2));
+
+    // vertexBuffer[id.x].pos.xz = sigma_q;
+
+    // return;
+    //Shortcut
+    float3 pos = vertexBuffer[id.x].pos;
+
+    //distance to center factor
+    float dist = 6.0f*distance(pos.xz,float2(0,0));
+    
+    pos.y = sin(_Time*2.0f + dist)*0.25f;
+    //if(pos.y <0) pos.y *= 2.0f;
+
+    //Assign back
+    vertexBuffer[id.x].pos.y = pos.y;
+}
+
+RWTexture2D<float4> Result;
+
+[numthreads(8,8,1)]
+void CSTexture (uint3 id : SV_DispatchThreadID)
+{   	
+    Result[id.xy] = float4 (1.0, 1.0, 1.0, 1.0);
+}
+// vertex 33 x 33

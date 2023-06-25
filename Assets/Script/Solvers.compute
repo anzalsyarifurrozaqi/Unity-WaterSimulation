@@ -1,0 +1,31 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel Jacobi_Solve
+
+#include "FluidDynamicCommonUniforms.cginc"
+
+#include "FluidDynamicUtility.cginc"
+
+float _centerFactor;
+float _rDiagonal;
+
+StructuredBuffer<float4> _b_buffer;
+StructuredBuffer<float4> _updated_x_buffer;
+RWStructuredBuffer<float4> _results;
+
+RWTexture2D<float4> Result;
+
+[numthreads(16,16,1)]
+void Jacobi_Solve (uint3 id : SV_DispatchThreadID)
+{
+    int2  coordinate = id.xy;
+
+
+    float4 left     = _updated_x_buffer[id2Dto1D(coordinate - int2(1, 0))];
+    float4 right    = _updated_x_buffer[id2Dto1D(coordinate + int2(1, 0))];
+    float4 bottom   = _updated_x_buffer[id2Dto1D(coordinate - int2(0, 1))];
+    float4 top      = _updated_x_buffer[id2Dto1D(coordinate + int2(0, 1))];
+
+    float4 b_center = _b_buffer[id2Dto1D(coordinate)];
+
+    _results[id2Dto1D(coordinate)] = (left + right + bottom + top + (_centerFactor * b_center)) * _rDiagonal;
+}

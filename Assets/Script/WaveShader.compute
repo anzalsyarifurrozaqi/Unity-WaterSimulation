@@ -1,0 +1,27 @@
+#pragma kernel WaveOperation
+
+#include "FluidDynamicCommonUniforms.cginc"
+
+#include "FluidDynamicUtility.cginc"
+
+half2 _fog_factor_noise;
+RWStructuredBuffer<float4> _wave_buffer;
+
+[numthreads(16,16,1)]
+void WaveOperation (uint3 id : SV_DispatchThreadID)
+{    
+    float2 uv = id.xy / (float)_TextureSize;
+
+    _fog_factor_noise.y = ((noise((id.xz * 0.5) + _TimeStep) + noise((id.xz * 1) + _TimeStep)) * 0.25 - 0.5) + 1;
+
+    float2 uvZW = id.xz * 0.1h * _TimeStep * 0.05h + (_fog_factor_noise.y * 0.1);
+    float2 uvXY = id.xz * 0.1h - (_TimeStep / 60) * 0.1h * (_fog_factor_noise.y * 0.2);
+    
+
+    float4 currentDyeBufferValue = _wave_buffer[id2Dto1D(id.xy)];
+    _wave_buffer[id2Dto1D(id.xy)] = float4(uvXY, 0,0);
+}
+
+// melingkar
+// float4 currentDyeBufferValue = _wave_buffer[id2Dto1D(id.xy)];
+// _wave_buffer[id2Dto1D(id.xy)] = currentDyeBufferValue * 5.f;

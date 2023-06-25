@@ -1,0 +1,44 @@
+#pragma kernel NeuMannBoundary
+#pragma kernel ArbitaryBoundaryVelocity
+
+#include "WaterSimulationCommonUniforms.cginc"
+
+#include "WaterSystemUtility.cginc"
+
+
+RWStructuredBuffer<float4>          _neumaboundary_field_to_contain;
+float                               _neumaboundary_scale;
+
+[numthreads(256,1,1)]
+void NeuMannBoundary (uint3 id : SV_DispatchThreadID)
+{
+    int case_id     = id.x / _texture_size;
+    int rest        = id.x - case_id * _texture_size;
+
+    int2 coord      = uint2(0, 0);
+    int2 offset     = uint2(0, 0);
+
+    if (case_id == 0) {coord = int2(    0,                  rest                ); offset = int2(1,     0);     } // kiri
+    if (case_id == 1) {coord = int2(    _texture_size - 1,  rest                ); offset = int2(-1,    0);     } // kanan
+    if (case_id == 2) {coord = int2(    rest,               _texture_size - 1   ); offset = int2(0,     -1);    } // atas
+    if (case_id == 3) {coord = int2(    rest,               0                   ); offset = int2(0,     1);     } // bawah
+
+    _neumaboundary_field_to_contain[id2Dto1D(coord)] = _neumaboundary_scale * _neumaboundary_field_to_contain[id2Dto1D(coord + offset)];
+}
+
+StructuredBuffer<int4>     _perCellArbitaryBoundryOffsetsVellocity ;
+StructuredBuffer<float4>   _velocity_buffer                        ;
+RWStructuredBuffer<float4> _new_handleded_velocity                 ;
+
+[numthreads(8, 8, 1)]
+void ArbitaryBoundaryVelocity(uint3 id : SV_DispatchThreadID)
+{
+    int4 scaleOffset = _perCellArbitaryBoundryOffsetsVellocity[id2Dto1D(id.xy)];
+
+    float4 boundaryVelocity = float4(0., 0., 0., 0.);
+
+    boundaryVelocity.x = scaleOffset.z * _velocity_buffer[id2Dto1D(id.xy + int2(scaleOffset.x, 0))].x;
+    boundaryVelocity.y = scaleOffset.w * _velocity_buffer[id2Dto1D(id.xy + int2(0, scaleOffset.y))].y;
+
+    _new_handleded_velocity[id2Dto1D(id.xy)] = boundaryVelocity;
+}

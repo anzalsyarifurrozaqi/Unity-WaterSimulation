@@ -1,0 +1,17 @@
+#pragma kernel Wave
+
+#include "FluidDynamicCommonUniforms.cginc"
+
+#include "FluidDynamicUtility.cginc"
+
+StructuredBuffer<float4> _b_buffer;
+StructuredBuffer<float4> _updated_x_buffer;
+RWStructuredBuffer<float4> _results;
+
+
+[numthreads(16,16,1)]
+void Wave (uint3 id : SV_DispatchThreadID)
+{
+ 
+}
+

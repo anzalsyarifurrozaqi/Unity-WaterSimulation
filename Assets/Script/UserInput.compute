@@ -1,0 +1,26 @@
+#pragma kernel AddDye
+
+#include "FluidDynamicCommonUniforms.cginc"
+RWStructuredBuffer<float4> _dye_buffer;
+
+#include "FluidDynamicUtility.cginc"
+
+float4 _dye_color;
+float2 _mouse_position;
+float _mouse_pressed;
+float _mouse_dye_falloff;
+float _mouse_dye_radius;
+
+[numthreads(16,16,1)]
+void AddDye (uint3 id : SV_DispatchThreadID)
+{
+    float2 vecToMouse = _mouse_position - (float2)id.xy;
+    float disToMouse = length(vecToMouse);
+
+    float dyeAmount = smoothstep(_mouse_dye_radius, _mouse_dye_radius - _mouse_dye_falloff, disToMouse);
+    dyeAmount *= _mouse_pressed;
+
+    float4 currentDyeBufferValue = _dye_buffer[id2Dto1D(id.xy)];
+    currentDyeBufferValue += dyeAmount * _dye_color;
+    _dye_buffer[id2Dto1D(id.xy)] = currentDyeBufferValue;
+}

@@ -1,0 +1,26 @@
+#pragma kernel Advection
+
+#include "FluidDynamicCommonUniforms.cginc"
+
+#include "FluidDynamicUtility.cginc"
+
+float                      _dissipationFactor;
+
+StructuredBuffer<float4>   _velocity_field_buffer;
+StructuredBuffer<float4>   _field_to_advect_buffer;
+
+RWStructuredBuffer<float4> _new_advected_field;     
+
+[numthreads(16,16,1)]
+void Advection (uint3 id : SV_DispatchThreadID)
+{
+    float2  coord = id.xy;
+    
+    float2 advection_source_coord = coord - (_TimeStep * _velocity_field_buffer[id2Dto1D(coord)] * (1. / _GridSize)) ;
+    
+    
+    advection_source_coord = clamp(advection_source_coord, 0.0, _TextureSize - 1.0);
+    
+    _new_advected_field[id2Dto1D(coord)] = _dissipationFactor * StructuredBufferBilinearLoad(_field_to_advect_buffer, coord);
+                                           
+}

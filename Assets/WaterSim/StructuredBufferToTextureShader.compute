@@ -1,0 +1,50 @@
+#pragma kernel DyeStructeredToTextureBillinearRGB8
+#pragma kernel PressureStructeredToTextureBillinearR32
+#pragma kernel VelocityStructeredToTextureBillinearRG32
+
+// DECLERNATIONS
+#include "WaterSimulationCommonUniforms.cginc"
+
+// HELPER FUNCTIONS
+#include "WaterSystemUtility.cginc"
+
+
+StructuredBuffer<float4>    _Dye_StructuredToTexture_Source_RBB8;
+RWTexture2D<float4>         _Dye_StructuredToTexture_Results_RBB8;
+int                         _Dye_Results_Resolution;
+
+[numthreads(8,8,1)]
+void DyeStructeredToTextureBillinearRGB8 (uint3 id : SV_DispatchThreadID)
+{
+    float2 coord = (float2)id.xy / (float)(_Dye_Results_Resolution - 1);
+    coord *= (float)(_texture_size - 1);
+
+    _Dye_StructuredToTexture_Results_RBB8[id.xy] = StructuredBufferBilinearLoad(_Dye_StructuredToTexture_Source_RBB8, coord);
+}
+
+StructuredBuffer<float4>   _Pressure_StructeredToTexture_Source_R32;
+RWTexture2D<float4>        _Pressure_StructeredToTexture_Results_R32;
+int                        _Pressure_Results_Resolution;
+
+[numthreads(8,8,1)]
+void PressureStructeredToTextureBillinearR32(uint3 id : SV_DispatchThreadID)
+{
+    float2 coord  = (float2)id.xy / (float)(_Pressure_Results_Resolution -1 );
+    coord *= (float) (_texture_size-1);
+
+    _Pressure_StructeredToTexture_Results_R32[id.xy] = StructuredBufferBilinearLoad(_Pressure_StructeredToTexture_Source_R32, coord);
+}
+
+StructuredBuffer<float4>   _Velocity_StructeredToTexture_Source_RB32;
+RWTexture2D<float4>        _Velocity_StructeredToTexture_Results_RB32;
+int                        _Velocity_Results_Resolution;
+
+[numthreads(16, 16, 1)]
+void VelocityStructeredToTextureBillinearRG32(uint3 id : SV_DispatchThreadID)
+{
+    float2 coord = (float2)id.xy / (float)(_Velocity_Results_Resolution - 1);
+    coord *= (float)(_texture_size - 1);
+
+    _Velocity_StructeredToTexture_Results_RB32[id.xy] = StructuredBufferBilinearLoad(_Velocity_StructeredToTexture_Source_RB32, coord);
+
+}

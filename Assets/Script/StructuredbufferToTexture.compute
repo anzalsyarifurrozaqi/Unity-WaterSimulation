@@ -1,0 +1,20 @@
+#pragma kernel DyeStructeredToTextureBillinearRGB8
+
+// DECLERNATIONS
+#include "FluidDynamicCommonUniforms.cginc"
+
+// HELPER FUNCTIONS
+#include "FluidDynamicUtility.cginc"
+
+StructuredBuffer<float4>    _Dye_StructuredToTexture_Source_RBB8;
+RWTexture2D<float4>         _Dye_StructuredToTexture_Results_RBB8;
+int                         _Dye_Results_Resolution;
+
+[numthreads(16,16,1)]
+void DyeStructeredToTextureBillinearRGB8 (uint3 id : SV_DispatchThreadID)
+{
+    float2 coord = (float2)id.xy / (float)(_Dye_Results_Resolution - 1);
+    coord *= (float)(_TextureSize - 1);
+
+    _Dye_StructuredToTexture_Results_RBB8[id.xy] = StructuredBufferBilinearLoad(_Dye_StructuredToTexture_Source_RBB8, coord);
+}
