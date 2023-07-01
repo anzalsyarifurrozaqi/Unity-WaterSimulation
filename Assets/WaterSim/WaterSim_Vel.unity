@@ -123,6 +123,140 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &74164616
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 74164618}
+  - component: {fileID: 74164617}
+  m_Layer: 0
+  m_Name: WaterBoundary
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &74164617
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 74164616}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0fdf5edbfe718ef45b2aed66ad20ddc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Size: {x: 512, y: 100, z: 512}
+  Material: {fileID: 2100000, guid: df8c93f247a1fe04c9196bede0139d5a, type: 2}
+  Resolution: {x: 512, y: 512}
+--- !u!4 &74164618
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 74164616}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 5
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &227253293
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 227253295}
+  - component: {fileID: 227253294}
+  m_Layer: 0
+  m_Name: WaterPlane
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &227253294
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 227253293}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0263ae4e2a1383a45ae895b8e0f33ef6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  GenerateOnStart: 1
+  Size: {x: 512, y: 100, z: 512}
+  ChunksX: 16
+  ChunksZ: 16
+  LODSettings:
+  - Size: 32
+    ScreenHeight: 1
+    FadeTransitionWidth: 0.5
+    IgnoreLodGroup: 0
+    RenderSettings:
+      ShadowCastingMode: 1
+      ReceiveShadows: 1
+      DynamicOccluded: 1
+  - Size: 16
+    ScreenHeight: 0.8
+    FadeTransitionWidth: 0.5
+    IgnoreLodGroup: 0
+    RenderSettings:
+      ShadowCastingMode: 1
+      ReceiveShadows: 1
+      DynamicOccluded: 1
+  - Size: 8
+    ScreenHeight: 0.5
+    FadeTransitionWidth: 0.5
+    IgnoreLodGroup: 0
+    RenderSettings:
+      ShadowCastingMode: 1
+      ReceiveShadows: 1
+      DynamicOccluded: 1
+  - Size: 4
+    ScreenHeight: 0
+    FadeTransitionWidth: 0.5
+    IgnoreLodGroup: 0
+    RenderSettings:
+      ShadowCastingMode: 1
+      ReceiveShadows: 1
+      DynamicOccluded: 1
+  LodFadeMode: 2
+  AnimateLodCrossFading: 1
+  Materials:
+  - {fileID: 2100000, guid: 94594458eab4f8047b9fb5e6a683a555, type: 2}
+  - {fileID: 2100000, guid: 81c69b9818557ec4e9b2f8177a9b54c7, type: 2}
+  InstantiateMaterials: 0
+--- !u!4 &227253295
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 227253293}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 4
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &751241784
 GameObject:
   m_ObjectHideFlags: 0
@@ -139,7 +273,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &751241785
 Transform:
   m_ObjectHideFlags: 0
@@ -169,29 +303,71 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   WaterSimulation:
     TestShader: {fileID: 7200000, guid: dd752dc5c26909243bb0561993d445ca, type: 3}
-    LandShader: {fileID: 7200000, guid: a3265592d7e41f344b7c77633819a36f, type: 3}
-    TerrainShader: {fileID: 7200000, guid: d6df21fdd7759a14d8213adf9ae5403a, type: 3}
-    WaterShader: {fileID: 7200000, guid: 3eeee374e05f5ce43b1d4ebded5a9166, type: 3}
-    StructuredBufferToTextureShader: {fileID: 7200000, guid: 97c287e509f289c47887306673a3a5e4,
-      type: 3}
-    StructuredBufferUtilityShader: {fileID: 7200000, guid: 062abda5716102d4885fb8706b643ee2,
-      type: 3}
-    BorderShader: {fileID: 7200000, guid: 6e2ac30be09a58a42aafe44316618f27, type: 3}
-    m_WaterMat: {fileID: 2100000, guid: 81c69b9818557ec4e9b2f8177a9b54c7, type: 2}
-    DyeRadius: 1
-    DyeFalloff: 2
-    time_step: 1
-    Viscosity: 0.5
-    _Kernel_Handle_Test_AddColor: 0
-    _Kernel_Handle_Test_Diffuse: 0
-    _Kernel_Handle_Test_GridColor: 0
-    _Kernel_Handle_Test_PipeMethod: 0
-    _Kernel_Handle_Pressure_st2tx: 0
-    _Kernel_Handle_Velocity_st2tx: 0
-    _Kernel_Handle_AddConstantForceSource: 0
-    _Kernel_Handle_Divergence: 0
-    VisualisationTexture: {fileID: 0}
-    Effect: {x: 0, y: 0}
+    WaterShader: {fileID: 7200000, guid: a3265592d7e41f344b7c77633819a36f, type: 3}
+    m_WaterMaterial: {fileID: 2100000, guid: 81c69b9818557ec4e9b2f8177a9b54c7, type: 2}
+    _Kernel_Handle_GenerateMesh: 0
+    _Kernel_Handle_Test_SurfacePos: 0
+--- !u!1 &820121835
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 820121837}
+  - component: {fileID: 820121836}
+  m_Layer: 0
+  m_Name: Simulation
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &820121836
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 820121835}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 450866c02c1a9894a8397f4fd223f981, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Materials:
+  - {fileID: 2100000, guid: 94594458eab4f8047b9fb5e6a683a555, type: 2}
+  - {fileID: 2100000, guid: 81c69b9818557ec4e9b2f8177a9b54c7, type: 2}
+  - {fileID: 2100000, guid: df8c93f247a1fe04c9196bede0139d5a, type: 2}
+  ErosionComputeShader: {fileID: 7200000, guid: 5afdb41c897c5d24ab56035709f42fc8,
+    type: 3}
+  BrushAmount: 1
+  Width: 512
+  Height: 512
+  Settings:
+    TimeScale: 10
+    RainRate: 0
+    Gravity: 9.81
+    PipeArea: 5
+    PipeLength: 1
+    CellSize: {x: 5, y: 5}
+    WaterHeight: 20
+--- !u!4 &820121837
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 820121835}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 3
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1394028058
 GameObject:
   m_ObjectHideFlags: 0
@@ -202,6 +378,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1394028060}
   - component: {fileID: 1394028059}
+  - component: {fileID: 1394028061}
   m_Layer: 0
   m_Name: Directional Light
   m_TagString: Untagged
@@ -286,6 +463,29 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+--- !u!114 &1394028061
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1394028058}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Version: 3
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_LightLayerMask: 1
+  m_RenderingLayers: 1
+  m_CustomShadowLayers: 0
+  m_ShadowLayerMask: 1
+  m_ShadowRenderingLayers: 1
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
 --- !u!1 &2129486844
 GameObject:
   m_ObjectHideFlags: 0
@@ -370,11 +570,11 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2129486844}
-  m_LocalRotation: {x: 0.70710665, y: -0, z: -0, w: 0.70710695}
-  m_LocalPosition: {x: -49.418472, y: 30.523014, z: -48.94024}
+  m_LocalRotation: {x: 0.7071068, y: -0.00000005960466, z: -0.00000005960466, w: 0.7071068}
+  m_LocalPosition: {x: 273.89316, y: 698.94745, z: 242.37762}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 14.541, y: -89.1, z: 0}

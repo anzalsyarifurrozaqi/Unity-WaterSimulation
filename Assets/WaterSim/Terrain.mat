@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: WaterShader
-  m_Shader: {fileID: 4800000, guid: c880090d98213e94fab8940fd4d57a97, type: 3}
+  m_Name: Terrain
+  m_Shader: {fileID: 4800000, guid: c2afd58548639ad4dbe7a7ded9150c68, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -27,17 +27,15 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _NoiseTexture:
+    - _StateTex:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _DisplacementDistribution: 0.2
-    - _DisplacementStrength: 5
     - _Glossiness: 0.5
-    - _MaxDisplacement: 5
     - _Metallic: 0
+    - _NormalStrength: 1
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []

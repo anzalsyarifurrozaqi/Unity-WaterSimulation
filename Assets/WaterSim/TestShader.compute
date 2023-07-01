@@ -1,7 +1,4 @@
-#pragma kernel TestGridColor
-#pragma kernel TestDifuse
-#pragma kernel TestAddColor
-#pragma kernel TestPipeMethod
+#pragma kernel TestSurfacePos
 
 #include "WaterSimulationCommonUniforms.cginc"
 
@@ -9,112 +6,24 @@
 
 #include "UnityCg.cginc"
 
-
-uint                         _grid_size_;          
-uint                         _grid_scale;
-float4                       _test_grid_color;
-RWStructuredBuffer<float4>  _test_buffer_color;
-
-
-[numthreads(16,16,1)]
-void TestGridColor (uint3 id : SV_DispatchThreadID)
+struct VertexData
 {
-    float2 uv = id.xy /(float) _texture_size;
-    _test_buffer_color[id2Dto1D(id.xy)] = float4(uv,1,1);
-}
+    float3 pos;
+    float3 nor;
+    float2 uv;
+};
 
-int                         _current_iteration;
-float4                      _test_color;
-StructuredBuffer<float4>    _test_buffer_AddColor;
-RWStructuredBuffer<float4>  _test_result_buffer_AddColor;
+RWStructuredBuffer<VertexData>  _test_buffer_surface;
 
 
 [numthreads(16,16,1)]
-void TestAddColor (uint3 id : SV_DispatchThreadID)
+void TestSurfacePos (uint3 id : SV_DispatchThreadID)
 {
-    float2 vecToMouse = float2(15, 15) - (float2)id.xy;
-    float  disToMouse = length(vecToMouse);
+    float3 pos = _test_buffer_surface[id.x].pos;
     
-    float  dyeAmount  = smoothstep(10, 10 - 1, disToMouse);
-    dyeAmount *= _current_iteration;
-
-    float4 currentDyeBufferValue  = _test_result_buffer_AddColor[id2Dto1D(id.xy)];
-    currentDyeBufferValue += dyeAmount * _test_color;
+    float dist = 10.0f * distance(pos.xz,float2(0,0));
     
-    _test_result_buffer_AddColor[id2Dto1D(id.xy)]  = currentDyeBufferValue;
+    pos.y = sin(_Time.y * 2.0f + dist)*0.25f;
+    
+    _test_buffer_surface[id2Dto1D(id.xy)].pos.y = pos.y;
 }
-
-// RWStructuredBuffer<float4>  _test_buffer_AddColor;
-
-[numthreads(16,16,1)]
-void TestDifuse (uint3 id : SV_DispatchThreadID)
-{
-//     // float2 vecToMouse = float2(317, 190) - (float2)id.xy;
-//     // float  disToMouse = length(vecToMouse);
-    
-//     // float  dyeAmount  = smoothstep(2, 2 - 1, disToMouse);
-//     // dyeAmount *= _current_iteration;
-
-//     // float4 currentDyeBufferValue  = _test_buffer_AddColor[id2Dto1D(id.xy)];
-//     // currentDyeBufferValue += dyeAmount * float4(1,1,1,1);
-    
-//     // _test_buffer_AddColor[id2Dto1D(id.xy)]  = currentDyeBufferValue;
-
-//     int2 coord = uint2(63/2, 63/2);
-//     _test_buffer_AddColor[id2Dto1D(coord)] = float4(1,1,1,1);
-}
-
-float                       _cross_section;
-float                       _gravity;
-float                       _length;
-float                       _time_step_;
-
-StructuredBuffer<float4>    _test_buffer_color_;
-StructuredBuffer<float4>    _test_update_buffer_color_;
-RWStructuredBuffer<float4>  _test_Result_buffer_PipeMethod;
-
-[numthreads(16,16,1)]
-void TestPipeMethod (uint3 id : SV_DispatchThreadID)
-{    
-    float4 hLeft            = _test_update_buffer_color_[id2Dto1D(id.xy - uint2(63, 0))];
-    float4 hRight           = _test_update_buffer_color_[id2Dto1D(id.xy + uint2(63, 0))];
-    float4 hBottom          = _test_update_buffer_color_[id2Dto1D(id.xy - uint2(0, 63))];
-    float4 hTop             = _test_update_buffer_color_[id2Dto1D(id.xy + uint2(0, 63))];
-
-    float4 hCenter          = _test_buffer_color_[id2Dto1D(id.xy)];    
-
-
-    float4 deltaHLeft       = hCenter   -   hLeft;
-    float4 deltaHRight      = hRight    -   hCenter;
-    float4 deltaHBottom     = hCenter   -   hBottom;
-    float4 deltaHTop        = hTop      -   hCenter;
-
-    float4 flowLeft         = _cross_section * (_gravity / _length) * deltaHLeft    * _time_step_;
-    float4 flowRight        = _cross_section * (_gravity / _length) * deltaHRight   * _time_step_;
-    float4 flowBottom       = _cross_section * (_gravity / _length) * deltaHBottom  * _time_step_;
-    float4 flowTop          = _cross_section * (_gravity / _length) * deltaHTop     * _time_step_;
-
-
-    float4 d                = -_time_step_ * ((flowLeft + flowRight + flowBottom + flowTop) / pow(_length, 2));
-
-    _test_Result_buffer_PipeMethod[id2Dto1D(id.xy)] += d;    
-}
-
-// 128 | 128 | 128 | 128 |
-//-----|-----|-----|-----|128
-//-----|-----|-----|-----|128
-//-----|-----|-----|-----|128
-//-----|-----|-----|-----|128
-
-    // (sim * 4, 1, 1) -> x = 2048
-    // num(256,1,1)
-    // // simulation id.x = 255
-    // int case_id     = id.x / _texture_size; // 0.49 => 0 in int
-    // int rest        = id.x - case_id * _texture_size; // 256 - 0
-
-    // int2 coord      = uint2(0, 0);
-    // int2 offset     = uint2(0, 0);
-
-    // if (case_id == 0) {coord = int2(0, rest); offset = int2(1,0);}
-
-    // _test_buffer_color[id2Dto1D(coord)] = float4(1,1,1,1); // coor (0, 255)

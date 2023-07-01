@@ -1,145 +1,46 @@
-#pragma kernel AddColor
-#pragma kernel Advection
-#pragma kernel PipeMethod
-#pragma kernel AddForce
-#pragma kernel AddConstantForceAt
-#pragma kernel Divergence
+#pragma kernel GenerateMesh
 
-// #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-
-#include "UnityCG.cginc"
-
-#include "WaterSimulationCommonUniforms.cginc"
-
-#include "WaterSystemUtility.cginc"
-
-
-int _current_iteration;
-
-RWStructuredBuffer<float4> _water_color_buffer;
-
-[numthreads(8,8,1)]
-void AddColor (uint3 id : SV_DispatchThreadID)
+struct VertexData
 {
-    float2 vecToMouse = float2(100, 100) - (float2)id.xy;
-    float  disToMouse = length(vecToMouse);
-    
-    float  dyeAmount  = smoothstep(50, 50 - 1, disToMouse);    
-    dyeAmount *= _current_iteration;            
+    float3 positionOS;
+    float3 normalOS;
+    float2 uv;
+};
 
-    float4 currentDyeBufferValue  = _water_color_buffer[id2Dto1D(id.xy)];
-    currentDyeBufferValue += dyeAmount * float4(1,1,1,1);
-    
-    _water_color_buffer[id2Dto1D(id.xy)]  = currentDyeBufferValue;
-}
+RWStructuredBuffer<VertexData> _generated_vertices;
+RWStructuredBuffer<int> _generated_indices;
 
-/////////////////////////////////////
-float   _dissipationFactor;
+int _grid_Size;
+int _total_grid_size;
+int PosX;
+int PosY;
 
-StructuredBuffer<float4>            _velocity_field_buffer;
-StructuredBuffer<float4>            _field_to_advect_buffer;
-RWStructuredBuffer<float4>          _new_advected_field;    
+[numthreads(128,1,1)]
+void GenerateMesh (uint3 id : SV_DispatchThreadID)
+{    
+    for (int y = 0; y < _grid_Size; ++y)
+    {
+        float2 uv           = float2((PosX + id.x) / (_total_grid_size - 1.0f), (PosY + y) / (_total_grid_size - 1.0f));
+        float3 pos          = float3(id.x, 0.0f, y);
+        float3 norm         = float3(0.0f, 1.0f, 0.0f);
 
+        _generated_vertices[id.x + y * _grid_Size].uv           = uv;
+        _generated_vertices[id.x + y * _grid_Size].positionOS   = pos;
+        _generated_vertices[id.x + y * _grid_Size].normalOS     = norm;
+    }
 
-[numthreads(8,8,1)]
-void Advection (uint3 id : SV_DispatchThreadID)
-{
-    float2  coord = id.xy;
-    
-    float2 advection_source_coord = coord - (1 * _velocity_field_buffer [id2Dto1D(coord)] * (1. / _grid_size));    
-    
-    advection_source_coord = clamp(advection_source_coord, 0.0, _texture_size - 1.0);
-    _new_advected_field[id2Dto1D(coord)] = _dissipationFactor * StructuredBufferBilinearLoad(_field_to_advect_buffer, advection_source_coord);
-}
+    if (id.x < _grid_Size - 1)
+    {
+        int num = id.x * (_grid_Size - 1) * 6;
+        for (int y = 0; y < _grid_Size - 1; ++y)    
+        {
+            _generated_indices[num++]           = id.x + y * _grid_Size;
+            _generated_indices[num++]           = id.x + (y + 1) * _grid_Size;
+            _generated_indices[num++]           = (id.x + 1) + y * _grid_Size;
 
-StructuredBuffer<float4>     _divergence_vector_field;
-RWStructuredBuffer<float4>   _divergence_values;
-
-[numthreads(8, 8, 1)]
-void Divergence(uint3 id : SV_DispatchThreadID)
-{                                                                           
-    float partialXY = 2. * _grid_size;
-    int2  coord     = id.xy;
-
-    float4 left     = _divergence_vector_field[id2Dto1D(coord - int2(1, 0))];
-    float4 right    = _divergence_vector_field[id2Dto1D(coord + int2(1, 0))];
-    float4 bottom   = _divergence_vector_field[id2Dto1D(coord - int2(0, 1))];
-    float4 top      = _divergence_vector_field[id2Dto1D(coord + int2(0, 1))];
-
-    _divergence_values[id2Dto1D(coord)] = ((right.x - left.x + top.y - bottom.y) *  1. / partialXY).xxxx;
-}
-
-///////////////////////////////////////
-float   A;
-float   g;
-float   L;
-
-float   _centerFactor;
-float   _rDiagonal;
-
-StructuredBuffer<float4>            _current_buffer;
-StructuredBuffer<float4>            _update_water_buffer;
-RWStructuredBuffer<float4>          _water_buffer;
-
-
-[numthreads(8,8,1)]
-void PipeMethod (uint3 id : SV_DispatchThreadID)
-{
-    float Left         = _update_water_buffer[id2Dto1D(id.xy - int2(1, 0))].x;
-    float Right        = _update_water_buffer[id2Dto1D(id.xy + int2(1, 0))].x;
-    float Bottom       = _update_water_buffer[id2Dto1D(id.xy - int2(0, 1))].x;
-    float Top          = _update_water_buffer[id2Dto1D(id.xy + int2(0, 1))].x;
-
-    float Center       = _current_buffer[id2Dto1D(id.xy)].x;
-
-    float SumFlow      = (Left + Right + Bottom + Top + (_centerFactor * Center)) * _rDiagonal;
-
-    _water_buffer[id2Dto1D(id.xy)] = SumFlow;    
-
-    // float2 z = cos(id.xz * 20 + _time);
-    // _water_buffer[id2Dto1D(id.xy)] = float4(z,0,0);
-}
-
-RWStructuredBuffer<float4>  _user_applied_force_buffer;
-float                       _force_multiplier;
-float                       _force_effect_radius;
-float                       _force_falloff;
-float2                      _pos_prev;
-float2                      _pos_current;
-
-#include "2DDrawingUtility.cginc"
-
-[numthreads(8,8,1)]
-void AddForce(uint3 id : SV_DispatchThreadID) 
-{
-    float2 prev2curr    = _pos_current - _pos_prev;
-    float mov_length    = length(prev2curr);
-
-    if (mov_length < epsilon) return;
-
-    float cellCloseEnough = DrawHalfVectorWithLength(
-        _pos_prev,
-        prev2curr / mov_length,
-        mov_length,
-        (float2) id.xy,
-        _force_effect_radius,
-        _force_falloff
-    );
-    _user_applied_force_buffer[id2Dto1D(id.xy)] += float4(cellCloseEnough * prev2curr * _force_multiplier, 0., 0.);
-}
-
-float4                     _constant_force_source_direction;
-float2                     _constant_force_source_position;
-float                      _constant_force_falloff;
-float                      _constant_force_radius;
-
-[numthreads(8, 8, 1)]
-void AddConstantForceAt(uint3 id : SV_DispatchThreadID) 
-{
-    float2 vecToSource = _constant_force_source_position - (float2)id.xy;
-    float  disToSource = length(vecToSource);
-
-    float  forceMask = smoothstep(_constant_force_radius, _constant_force_radius - _constant_force_falloff, disToSource);
-
-    _user_applied_force_buffer[id2Dto1D(id.xy)] += float4(forceMask *_constant_force_source_direction.xy, 0., 0.);
+            _generated_indices[num++]           = id.x + (y + 1) * _grid_Size;
+            _generated_indices[num++]           = (id.x + 1) + (y + 1) * _grid_Size;
+            _generated_indices[num++]           = (id.x + 1) + y * _grid_Size;
+        }        
+    }
 }

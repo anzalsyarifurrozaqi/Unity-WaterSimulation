@@ -14,7 +14,7 @@
 //#define id2Dto1D(m_coord) (m_coord.x + (m_coord.y * (float)i_Resolution))        // I was getting to many compiler issues with a macro
 
 int id2Dto1D(int2 m_coord) {
-    return clamp(m_coord.x, 0, _texture_size - 1 ) + clamp(m_coord.y, 0, _texture_size - 1 ) * _texture_size;
+    return clamp(m_coord.x, 0, _grid_size - 1 ) + clamp(m_coord.y, 0, _grid_size - 1 ) * _grid_size;
 }
 
 

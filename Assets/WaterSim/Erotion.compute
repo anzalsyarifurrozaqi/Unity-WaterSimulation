@@ -1,0 +1,159 @@
+#pragma kernel InitWaterHeight
+#pragma kernel PressureControl
+#pragma kernel FluxComputation
+#pragma kernel FluxApply
+
+// Number of threads in each kernel
+#define NUMTHREADS numthreads(8,8,1)
+
+// State Channel Semantics
+#define TERRAIN_HEIGHT(col) (col.r)
+#define WATER_HEIGHT(col) (col.g)
+#define FULL_HEIGHT(col) ((TERRAIN_HEIGHT(col) + WATER_HEIGHT(col)))
+
+// Sampling macro, just to simplify the code a bit
+#define CURRENT_SAMPLE(tex) (tex[id.xy])
+#define SAMPLE_WITH_OFFSET(tex, x, y) ((tex[id.xy + uint2(x, y)]))
+#define LEFT_SAMPLE(tex) (SAMPLE_WITH_OFFSET(tex, -1, 0))
+#define RIGHT_SAMPLE(tex) (SAMPLE_WITH_OFFSET(tex, 1, 0))
+#define TOP_SAMPLE(tex) (SAMPLE_WITH_OFFSET(tex, 0, 1))
+#define BOTTOM_SAMPLE(tex) (SAMPLE_WITH_OFFSET(tex, 0, -1))
+
+#define SUM_COMPS(v) ((v.r + v.g + v.b + v.a))
+
+// Directional maps channel semantics
+// It means that for textures with 4-directional data (like flux)
+// value for the each direction stored in a separate channel
+// For example, LEFT is stored in RED channel
+#define LDIR(col) (col.r)
+#define RDIR(col) (col.g)
+#define TDIR(col) (col.b)
+#define BDIR(col) (col.a)
+
+// Heightmap (R - Height, G - Water Height, B - Suspended Sediment Amount, R - Surface Hardness)
+RWTexture2D<float4> 		HeightMap;
+
+// Water Flux field (R - left, G - right, B - top, A - bottm)
+RWTexture2D<float4>			FluxMap;
+
+// Velocity field (R - velocity x, G - velocity y)
+RWTexture2D<float2>			VelocityMap;
+
+float4      _InputControls;
+
+// Fluid simulation properties
+uint        _Width;
+uint        _Height;
+float       _TimeDelta;
+float       _RainRate;
+float       _WaterHeight;
+float		_Gravity;
+float		_PipeArea;
+float		_PipeLength;
+float2		_CellSize;
+
+[NUMTHREADS]
+void InitWaterHeight (uint3 id : SV_DispatchThreadID)
+{
+	float4 CurrentState 		= CURRENT_SAMPLE(HeightMap);	
+	WATER_HEIGHT(CurrentState) 	= _WaterHeight;
+	CURRENT_SAMPLE(HeightMap) 	= CurrentState;
+}
+
+[NUMTHREADS]
+void PressureControl (uint3 id : SV_DispatchThreadID)
+{
+    float4 currentState 		= CURRENT_SAMPLE(HeightMap);	
+    WATER_HEIGHT(currentState) 	+= _TimeDelta * _RainRate;
+
+    // Water-drawing brush
+	float2 uv 		= float2((float)id.x / _Width, (float)id.y / _Height);
+	float2 dist 	= uv - _InputControls.xy;
+	if (length(dist) < abs(_InputControls.z))
+	{
+		WATER_HEIGHT(currentState) = max(0, WATER_HEIGHT(currentState) + _InputControls.w * _TimeDelta);
+	}
+
+    // Write new state to the HeightMap
+    CURRENT_SAMPLE(HeightMap) = currentState;
+}
+
+
+[NUMTHREADS]
+void FluxComputation(uint3 id : SV_DispatchThreadID)
+{
+	// Sample the heightmap (state map)
+	float4 State 			= CURRENT_SAMPLE(HeightMap);
+	float4 StateLeft 		= LEFT_SAMPLE(HeightMap);
+	float4 StateRight 		= RIGHT_SAMPLE(HeightMap);
+	float4 StateTop 		= TOP_SAMPLE(HeightMap);
+	float4 StateBottom 		= BOTTOM_SAMPLE(HeightMap);
+
+	float TerrainHeight 	= TERRAIN_HEIGHT(State);
+	float WaterHeight 		= WATER_HEIGHT(State);
+
+	// Flow simulation using shallow-water model. Computation of the velocity field and height changes.
+	// Sample Flux
+	float4 OutputFlux 		= CURRENT_SAMPLE(FluxMap);	
+
+	// Overall height difference in each direction
+	float4 HeightDifference = FULL_HEIGHT(State) - float4(
+		FULL_HEIGHT(StateLeft),
+		FULL_HEIGHT(StateRight),
+		FULL_HEIGHT(StateTop),
+		FULL_HEIGHT(StateBottom)
+	);
+
+	// Output flux
+	OutputFlux = max(0, OutputFlux + _TimeDelta * _Gravity * _PipeArea * HeightDifference / _PipeLength);
+
+	/* 
+		Resclae flux
+		The total outflow should not exceed the total amount
+		of the water in the given cell. If the calculated value is 
+		larger than the current amount in the give cell, 
+		then flux will be scaled down with an apporpriate factor
+	*/
+
+	OutputFlux *= min(1, WaterHeight * _CellSize.x * _CellSize.y / (SUM_COMPS(OutputFlux) * _TimeDelta));
+
+	// Boundaries (uncomment this if you want water to bounce of boundaries)
+	if (id.x == 0) LDIR(OutputFlux) 			= 0;
+	if (id.y == 0) BDIR(OutputFlux) 			= 0;
+	if (id.x == _Width - 1) RDIR(OutputFlux) 	= 0;
+	if (id.y == _Height - 1) TDIR(OutputFlux) 	= 0;
+
+	// Write new flux to the FluxMap
+	CURRENT_SAMPLE(FluxMap) = max(0, OutputFlux);
+}
+
+[NUMTHREADS]
+void FluxApply(uint3 id : SV_DispatchThreadID)
+{
+	float4 State 		= CURRENT_SAMPLE(HeightMap);
+	float4 OutputFlux 	= CURRENT_SAMPLE(FluxMap);
+	float4 InputFlux	= float4(
+		RDIR(LEFT_SAMPLE(FluxMap)),
+		LDIR(RIGHT_SAMPLE(FluxMap)),
+		BDIR(TOP_SAMPLE(FluxMap)),
+		TDIR(BOTTOM_SAMPLE(FluxMap))
+	);
+
+	float WaterHeightBefore = WATER_HEIGHT(State);
+
+	// Water surface and velocity field update
+	// volume is changing by amount incoming fluid volume minus outgoing
+	float VolumeDelta = SUM_COMPS(InputFlux) - SUM_COMPS(OutputFlux);
+
+	// Then, we update the water height incoming fluid volume minus outgoing
+	WATER_HEIGHT(State) += _TimeDelta * VolumeDelta / (_CellSize.x * _CellSize.y);
+
+	// Write new state to the HeightMap
+	CURRENT_SAMPLE(HeightMap) = State;
+
+	// Compute new velocity from flux to the VelocityMap
+	CURRENT_SAMPLE(VelocityMap) = float2(
+		0.5 * (LDIR(InputFlux) - LDIR(OutputFlux) + RDIR(OutputFlux) - RDIR(InputFlux)),
+		0.5 * (BDIR(InputFlux) - BDIR(OutputFlux) + TDIR(OutputFlux) - TDIR(InputFlux))
+	);
+}
