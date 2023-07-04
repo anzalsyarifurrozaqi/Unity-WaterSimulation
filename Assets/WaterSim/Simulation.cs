@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using Assets.Scripts.Utils;
+using UnityEngine.Rendering.Universal;
 
 public class Simulation : MonoBehaviour
 {
@@ -31,7 +32,17 @@ public class Simulation : MonoBehaviour
 
         public Vector2 CellSize = new Vector2(1f / 256f, 1f / 256f);
 
+        [Range(0.1f, 1f)]
+        public float Amplitude = 0.1f;
 
+        [Range(0f, 360f)]
+        public float Direction = 0.0f;
+
+        [Range(1f, 45f)]
+        public float WaveLength = 0.0f;
+
+        [Range(1, 8)]
+        public int WaveCount = 1;
 
         [Range(1f, 20f)]
         public float WaterHeight = 1f;
@@ -42,6 +53,8 @@ public class Simulation : MonoBehaviour
     public int Width = 256;
     [Range(32, 1024)]
     public int Height = 256;
+
+    public LayerMask BuoyancyMask;
     public SimulationSettings Settings;
 
     // State texture ARGBFloat
@@ -66,6 +79,12 @@ public class Simulation : MonoBehaviour
     // G - Y-velocity [-inf, +inf]
     private RenderTexture _VelocityTexture;
 
+    [SerializeField]
+    private RenderTexture _DepthTexture;
+
+    [SerializeField]
+    private RenderTexture _WaveTexture;
+
     // List of Kernels in the compute shader to be dispatched
     // Sequentially in this order
 
@@ -73,7 +92,8 @@ public class Simulation : MonoBehaviour
     {
         "PressureControl",
         "FluxComputation",
-        "FluxApply"
+        "FluxApply",
+        "GerstnerWave"
     };
 
     // Kernel-related data
@@ -84,12 +104,16 @@ public class Simulation : MonoBehaviour
 
     // Rendering stuff
     private const string StateTextureKey = "_StateTex";
+    private const string WaveTextureKey = "_WaveTex";
 
     // Brush
     private Plane _floor = new Plane(Vector3.up, Vector3.zero);
     private float _brushRadius = 0.01f;
     private Vector4 _inputControls;
     private Material _copyMat;
+
+    // Camera
+    private Camera _DepthCam;
 
     void Start()
     {
@@ -116,14 +140,15 @@ public class Simulation : MonoBehaviour
             brushY = hitPoint.z / Height;
 
             if (Input.GetMouseButton(0))
-                amount = BrushAmount;                        
+            {
+                amount = BrushAmount;                       
+            }
         }
         else
         {
             amount = 0f;
         }
-
-
+        
         _inputControls = new Vector4(brushX, brushY, _brushRadius, amount);
         Shader.SetGlobalVector("_InputControls", _inputControls);
     }
@@ -136,12 +161,20 @@ public class Simulation : MonoBehaviour
             if (Settings != null)
             {
                 // General parameters
-                ErosionComputeShader.SetFloat(  "_TimeDelta",   Time.fixedDeltaTime * Settings.TimeScale    );
-                ErosionComputeShader.SetFloat(  "_RainState",   Settings.RainRate                           );
-                ErosionComputeShader.SetFloat(  "_Gravity",     Settings.Gravity                            );
-                ErosionComputeShader.SetFloat(  "_PipeArea",    Settings.PipeArea                           );
-                ErosionComputeShader.SetFloat(  "_PipeLength",  Settings.PipeLength                         );
-                ErosionComputeShader.SetVector( "_CellSize",    Settings.CellSize                           );
+                ErosionComputeShader.SetFloat   (   "_TimeDelta",   Time.fixedDeltaTime * Settings.TimeScale    );
+                ErosionComputeShader.SetFloat   (   "_RainState",   Settings.RainRate                           );
+                ErosionComputeShader.SetFloat   (   "_Gravity",     Settings.Gravity                            );
+                ErosionComputeShader.SetFloat   (   "_PipeArea",    Settings.PipeArea                           );
+                ErosionComputeShader.SetFloat   (   "_PipeLength",  Settings.PipeLength                         );
+                ErosionComputeShader.SetVector  (   "_CellSize",    Settings.CellSize                           );
+
+
+                // Wave System
+                ErosionComputeShader.SetFloat   (   "_Time",        Time.time           );
+                ErosionComputeShader.SetFloat   (   "_Amplitude",   Settings.Amplitude  );
+                ErosionComputeShader.SetFloat   (   "_Direction",   Settings.Direction  );
+                ErosionComputeShader.SetFloat   (   "_WaveLength",  Settings.WaveLength );
+                ErosionComputeShader.SetInt     (   "_WaveCount",   Settings.WaveCount  );
 
 
                 // Inputs
@@ -171,6 +204,21 @@ public class Simulation : MonoBehaviour
             _StateTexture.Release();
         }
 
+        if (_WaterFluxTexture != null)
+        {
+            _WaterFluxTexture.Release();
+        }
+
+        if (_VelocityTexture != null)
+        {
+            _VelocityTexture.Release();
+        }
+
+        if (_DepthTexture != null)
+        {
+            _DepthTexture.Release();
+        }
+
         // Initialize texture for storing height map
         _StateTexture = new RenderTexture(Width, Height, 0, RenderTextureFormat.ARGBFloat)
         {
@@ -193,6 +241,23 @@ public class Simulation : MonoBehaviour
             wrapMode            = TextureWrapMode.Clamp
         };
 
+        _DepthTexture = new RenderTexture(Width, Height, 0, RenderTextureFormat.RGFloat)
+        {
+            // enableRandomWrite   = true,
+            filterMode          = FilterMode.Bilinear,
+            wrapMode            = TextureWrapMode.Clamp,
+        };
+
+        _WaveTexture = new RenderTexture(Width, Height, 0, RenderTextureFormat.RGFloat)
+        {
+            enableRandomWrite           = true,
+            filterMode                  = FilterMode.Bilinear,
+            wrapMode                    = TextureWrapMode.Clamp
+        };
+
+
+        CaptureDepthMap();
+
         if (!_StateTexture.IsCreated())
         {
             _StateTexture.Create();
@@ -211,6 +276,7 @@ public class Simulation : MonoBehaviour
                 ErosionComputeShader.SetTexture(kernel, "HeightMap",     _StateTexture      );
                 ErosionComputeShader.SetTexture(kernel, "FluxMap",      _WaterFluxTexture   );
                 ErosionComputeShader.SetTexture(kernel, "VelocityMap",  _VelocityTexture    );
+                ErosionComputeShader.SetTexture(kernel, "WaveMap",      _WaveTexture        );
             }
 
             ErosionComputeShader.SetInt(    "_Width",   Width   );
@@ -232,6 +298,7 @@ public class Simulation : MonoBehaviour
         Debugger.Instance.Display(  "HeightMap",    _StateTexture       );
         Debugger.Instance.Display(  "FluxMap",      _WaterFluxTexture   );
         Debugger.Instance.Display(  "VelocityMap",  _VelocityTexture    );
+        Debugger.Instance.Display(  "WaveTexture",  _WaveTexture        );
 
 
         /* ========= Setup Rendering ======= */
@@ -239,8 +306,57 @@ public class Simulation : MonoBehaviour
         foreach (var material in Materials)
         {
             material.SetTexture(StateTextureKey, _StateTexture);
+            material.SetTexture(WaveTextureKey, _WaveTexture);
         }
     }  
+
+    public void CaptureDepthMap()
+    {
+        Debug.Log("capture Depth map");
+        // Generate the camera
+        if (_DepthCam == null)
+        {
+            var go = new GameObject("DepthCamera") 
+            {
+                // hideFlags = HideFlags.HideAndDontSave
+            };
+            _DepthCam = go.AddComponent<Camera>();
+        }
+
+        var AdditionCamData                     = _DepthCam.GetUniversalAdditionalCameraData();
+        AdditionCamData.renderShadows           = false;
+        AdditionCamData.requiresColorOption     = CameraOverrideOption.Off;
+        AdditionCamData.requiresDepthOption     = CameraOverrideOption.Off;
+
+        var DepthCamTransform           = _DepthCam.transform;
+        // var DepthExtra = 4.0f;
+        DepthCamTransform.position      = new Vector3(256f, 55f, 256f);
+        DepthCamTransform.up            = -Vector3.forward;
+
+        _DepthCam.enabled               = true;
+        _DepthCam.orthographic          = true;
+        _DepthCam.orthographicSize      = 250;
+        _DepthCam.nearClipPlane         = -60f;
+        _DepthCam.farClipPlane          = -40f;
+        _DepthCam.allowHDR              = false;
+        _DepthCam.allowMSAA             = false;
+        _DepthCam.cullingMask           = BuoyancyMask;
+
+        _DepthCam.targetTexture         = _DepthTexture;
+        _DepthCam.Render();
+
+
+        // _DepthCam.enabled = false;
+        // _DepthCam.targetTexture = null;        
+    }
+
+    void OnDisable()
+    {
+        if (_DepthTexture != null)
+        {
+            DestroyImmediate(_DepthTexture);
+        }
+    }
 
     public enum StateChannel : int
     {

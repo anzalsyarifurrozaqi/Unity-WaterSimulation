@@ -2,6 +2,7 @@
 #pragma kernel PressureControl
 #pragma kernel FluxComputation
 #pragma kernel FluxApply
+#pragma kernel GerstnerWave
 
 // Number of threads in each kernel
 #define NUMTHREADS numthreads(8,8,1)
@@ -9,6 +10,7 @@
 // State Channel Semantics
 #define TERRAIN_HEIGHT(col) (col.r)
 #define WATER_HEIGHT(col) (col.g)
+#define WAVE_HEIGHT(col) (col.g)
 #define FULL_HEIGHT(col) ((TERRAIN_HEIGHT(col) + WATER_HEIGHT(col)))
 
 // Sampling macro, just to simplify the code a bit
@@ -39,6 +41,9 @@ RWTexture2D<float4>			FluxMap;
 // Velocity field (R - velocity x, G - velocity y)
 RWTexture2D<float2>			VelocityMap;
 
+// 
+RWTexture2D<float4>			WaveMap;
+
 float4      _InputControls;
 
 // Fluid simulation properties
@@ -52,6 +57,16 @@ float		_PipeArea;
 float		_PipeLength;
 float2		_CellSize;
 
+// Wave system
+float		_Time;
+float		_Amplitude;
+float		_Direction;
+float		_WaveLength;
+int			_WaveCount;
+
+const float pi = acos(-1.0);
+const float2 c = float2(1.0, 0);
+
 [NUMTHREADS]
 void InitWaterHeight (uint3 id : SV_DispatchThreadID)
 {
@@ -63,6 +78,8 @@ void InitWaterHeight (uint3 id : SV_DispatchThreadID)
 [NUMTHREADS]
 void PressureControl (uint3 id : SV_DispatchThreadID)
 {
+	// CURRENT_SAMPLE(HeightMap) = float4(1,1,1,1);
+
     float4 currentState 		= CURRENT_SAMPLE(HeightMap);	
     WATER_HEIGHT(currentState) 	+= _TimeDelta * _RainRate;
 
@@ -156,4 +173,57 @@ void FluxApply(uint3 id : SV_DispatchThreadID)
 		0.5 * (LDIR(InputFlux) - LDIR(OutputFlux) + RDIR(OutputFlux) - RDIR(InputFlux)),
 		0.5 * (BDIR(InputFlux) - BDIR(OutputFlux) + TDIR(OutputFlux) - TDIR(InputFlux))
 	);
+}
+
+float Rand(float2 a0)
+{
+	return frac(sin(dot(a0.xy, float2(0.1, 4))) * 2);
+}
+
+void SetupWave(int i, out float st, out float am, out float2 dir, out float fr, out float sp)
+{
+	// Setup Wavee
+	st 	= abs(0.35 * Rand(float2(i, 0))).x; // qi
+	am 	= 0.005 + 0.0005 * Rand(float2(i+2, 0)).x; // ai
+	dir = (1.e0 + float2(1.7e0 * Rand(float2(i, i+1)), 2.e0 * Rand(float2(i+1, i)))); // di
+	fr 	= 6.0 + 12.0 * Rand(float2(i + 5, 0)).x; // wi
+	sp 	= 55.e-1 + 52.e-1 * Rand(float2(i + 4, 0)).x; // phi
+}
+
+void gerstner(float2 xy, float t, out float3 val, out float3 deriv)
+{
+	val = float3(xy, 0.0);
+	deriv = c.yyy;
+
+	float st, fr, sp, am;
+	float2 dir;
+
+	for (int i = 0; i < _WaveCount; ++i) 
+	{
+		SetupWave(i, st, am, dir, fr, sp);
+
+		// gen values
+		float d = dot(dir, xy);
+		val += float3(st * am * dir * cos(fr * d + sp * t), am * sin(fr * d + sp * t));
+	}
+
+	for (int i = 0; i < _WaveCount; ++i)
+	{
+		SetupWave(i, st, am, dir, fr, sp);
+
+		// get derivatives
+		deriv += float3(
+			-dir * fr * am * cos(fr * dot(dir, val.xy) + sp * t),
+			1.0 - st * fr * am * sin(fr * dot(dir, val.xy) + sp * t)			
+		);
+	}
+}
+
+[NUMTHREADS]
+void GerstnerWave(uint3 id : SV_DispatchThreadID)
+{	
+	float3 val, n;
+	gerstner(id.xy, _Time, val, n);
+	
+	CURRENT_SAMPLE(WaveMap)		= float4(n, 1.0);
 }

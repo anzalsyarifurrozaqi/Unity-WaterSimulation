@@ -2,7 +2,7 @@ Shader "Custom/TerrainShader"
 {
     Properties
     {        
-        _MainTex ("Texture", 2D)                                                = "black" {}
+        _MainTex ("Texture", 2D)                                                = "white" {}
         [NoScaleOffset] _StateTex("State", 2D)                                  = "black" {}
         [NoScaleOffset] _NormalStrength("NormalStrength", Range(0.1, 100))      = 0.5        
     }

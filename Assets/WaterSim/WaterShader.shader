@@ -4,6 +4,7 @@ Shader "Custom/WaterShader"
     {
 		_Color("Color", Color) = (0, 0, 1, 0.8)
 		[NoScaleOffset] _StateTex("State", 2D) = "black" {}
+		[NoScaleOffset] _WaveTex("State", 2D) = "black" {}
 		_NormalStrength("NormalStrength", Range(0.1, 100)) = 0.5		
 		_Metallic("Metallic", Range(0, 1)) = 0.5
 		_Smoothness("Smoothness", Range(0, 1)) = 1
@@ -44,6 +45,8 @@ Shader "Custom/WaterShader"
 			
 			sampler2D 	_StateTex;
 			float2 		_StateTex_TexelSize;
+			sampler2D	_WaveTex;
+			float2		_WaveTex_TexelSize;
 			float 		_NormalStrength;
 			float 		_Metallic;
 			float 		_Smoothness;
@@ -55,12 +58,14 @@ Shader "Custom/WaterShader"
 
 			#define WATER_HEIGHT(s) (s.g)
 			#define TERRAIN_HEIGHT(s) (s.r)
-			#define FULL_HEIGHT(s) (TERRAIN_HEIGHT(s) + WATER_HEIGHT(s))
+			#define WAVE_HEIGHT(w) (w.g)
+			#define FULL_HEIGHT(s, w) (TERRAIN_HEIGHT(s) + WATER_HEIGHT(s) + WAVE_HEIGHT(w))
 
 			v2f vert(appdata_base v)
 			{
-				float4 state 	= tex2Dlod(_StateTex, float4(v.texcoord.x, v.texcoord.y, 0, 0));
-				v.vertex.y 		+= FULL_HEIGHT(state);
+				float4 state 		= tex2Dlod(_StateTex, float4(v.texcoord.x, v.texcoord.y, 0, 0));
+				float4 waveState 	= tex2Dlod(_WaveTex, float4(v.texcoord.x, v.texcoord.y, 0, 0));
+				v.vertex.y 			+= FULL_HEIGHT(state, waveState);
 
 				v2f o;
 				o.pos 			= UnityObjectToClipPos(v.vertex);				
@@ -86,8 +91,16 @@ Shader "Custom/WaterShader"
 				float4 state_t 		= tex2D(_StateTex, i.uvState + dv);
 				float4 state_b 		= tex2D(_StateTex, i.uvState - dv);
 
-				half dhdu 			= _NormalStrength * 0.5 * (FULL_HEIGHT(state_r) - FULL_HEIGHT(state_l));
-				half dhdv 			= _NormalStrength * 0.5 * (FULL_HEIGHT(state_b) - FULL_HEIGHT(state_t));
+				float2 wdu 			= float2(_WaveTex_TexelSize.x * 0.5, 0);
+				float2 wdv 			= float2(0, _WaveTex_TexelSize.y * 0.5);
+
+				float4 wave_l 		= tex2D(_WaveTex, i.uvState + wdu);
+				float4 wave_r 		= tex2D(_WaveTex, i.uvState - wdu);
+				float4 wave_t 		= tex2D(_WaveTex, i.uvState + wdv);
+				float4 wave_b 		= tex2D(_WaveTex, i.uvState - wdv);
+
+				half dhdu 			= _NormalStrength * 0.5 * (FULL_HEIGHT(state_r, wave_r) - FULL_HEIGHT(state_l, wave_l));
+				half dhdv 			= _NormalStrength * 0.5 * (FULL_HEIGHT(state_b, wave_b) - FULL_HEIGHT(state_t, wave_t));
 
 				float3 normal 		= float3(dhdu, 1, dhdv);
 				float3 worldNormal 	= UnityObjectToWorldNormal(normalize(normal));
